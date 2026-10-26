@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔防 · Tower Defense</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<h1>🏰 塔防 · TOWER DEFENSE</h1>
+
+<!-- 地图选择面板 -->
+<div id="mapSelectPanel">
+  <div class="panel mapSelect">
+    <h3>🗺️ 选择关卡地图</h3>
+    <p class="mapDesc">不同地图的路径布局不同，影响塔位选择和战术布置。选择一个开始吧！</p>
+    <div id="mapGrid" class="mapGrid"></div>
+  </div>
+</div>
+
+<!-- 游戏主界面（初始隐藏） -->
+<div id="gameUI" style="display:none;">
+  <div id="hud">
+    <span>💰 <b class="gold" id="hudGold">0</b></span>
+    <span>❤️ <b class="lives" id="hudLives">0</b></span>
+    <span>🌊 波次 <b class="wave" id="hudWave">0</b>/<span id="hudMaxWave">0</span></span>
+    <span>⭐ 分数 <b id="hudScore">0</b></span>
+    <span>🗺️ <b id="hudMapName">-</b></span>
+  </div>
+  <div id="main">
+    <canvas id="game" width="760" height="600"></canvas>
+    <div id="side">
+      <div class="panel">
+        <button class="actBtn" id="waveBtn">▶ 开始下一波</button>
+        <button class="actBtn speedBtn" id="speedBtn">速度：1x</button>
+        <button class="actBtn sellBtn" id="recycleModeBtn" style="margin-top:4px;background:#5c4a52">♻ 回收模式</button>
+        <button class="actBtn sellBtn" id="recycleAllBtn" style="margin-top:4px;background:#5c4a52;font-size:12px" onclick="recycleAll()">♻ 回收全部</button>
+      </div>
+      <div class="panel">
+        <h3>建造防御塔（点击空地放置）</h3>
+        <div id="towerButtons"></div>
+      </div>
+      <div class="panel">
+        <h3>选中目标</h3>
+        <div id="towerInfo"><span class="tips">点击地图上的塔可升级或回收（返还 70% 金币）；右键直接回收；按 X 快速回收。</span></div>
+      </div>
+      <div class="panel tips">
+        击杀敌人获得金币，敌人冲入基地会扣生命。共 20 波，守住即为胜利！<br>
+        快捷键：<b>1/2/3</b> 选塔 · <b>空格</b> 开始波次 · <b>S</b> 加速 · <b>X</b> 回收 · <b>右键</b> 回收/取消。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="msg">
+  <h2 id="msgTitle"></h2>
+  <p id="msgText"></p>
+  <button onclick="location.reload()">重新开始</button>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
