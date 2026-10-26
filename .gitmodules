@@ -1,3 +1,6 @@
-# KARDS 美术资源 - 外部引用，不纳入仓库
-# 使用时从 GitHub 加载：
-# https://github.com/Gary-nope/KARDS-Assets
+# KARDS 美术资源
+# 本项目使用 GitHub CDN 直链引用 KARDS 卡牌游戏的美术素材
+# 原始仓库：https://github.com/Gary-nope/KARDS-Assets
+#
+# 图片素材在运行时从网络加载，不纳入版本控制。
+# 如需离线运行，请查看 dist/tower-defense-kards-allinone.html（内嵌 Base64 的超大版本）。

@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔防 · Tower Defense</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1d23;
+  color: #e0e0e0;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 12px;
+  user-select: none;
+}
+h1 { font-size: 20px; margin: 4px 0 10px; color: #ffd166; letter-spacing: 2px; }
+
+/* ==================== 地图选择面板 ==================== */
+#mapSelectPanel {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+.mapSelect .mapDesc {
+  font-size: 13px;
+  color: #8b93a7;
+  margin-bottom: 14px;
+  text-align: center;
+  line-height: 1.5;
+}
+.mapGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+.mapCard {
+  background: #2b3040;
+  border: 2px solid #3a4158;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.mapCard:hover {
+  border-color: #4ecdc4;
+  background: #333b50;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(78,205,196,0.15);
+}
+.mapCard.selected {
+  border-color: #ffd166;
+  background: #35304a;
+}
+.mapCard .mapName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+.mapCard .mapDesc {
+  font-size: 11px;
+  color: #6b7385;
+  margin-bottom: 10px;
+  line-height: 1.4;
+  min-height: 28px;
+}
+.mapCard canvas {
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #20242e;
+}
+.mapCard .mapHint {
+  font-size: 11px;
+  color: #4ecdc4;
+  opacity: 0.8;
+}
+.startHint {
+  font-size: 13px;
+  color: #8b93a7;
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* ==================== HUD ==================== */
+#hud {
+  display: flex;
+  gap: 24px;
+  background: #232733;
+  border: 1px solid #333a4a;
+  border-radius: 10px;
+  padding: 8px 18px;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+#hud b { color: #ffd166; }
+#hud .gold { color: #ffd166; }
+#hud .lives { color: #ff6b6b; }
+#hud .wave { color: #4ecdc4; }
+#main { display: flex; gap: 12px; }
+
+/* ==================== Canvas & Side Panel ==================== */
+canvas {
+  background: #20242e;
+  border: 1px solid #333a4a;
+  border-radius: 10px;
+  cursor: pointer;
+  display: block;
+}
+#side {
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel {
+  background: #232733;
+  border: 1px solid #333a4a;
+  border-radius: 10px;
+  padding: 10px;
+}
+.panel h3 { font-size: 13px; color: #8b93a7; margin-bottom: 8px; font-weight: 600; }
+
+/* ==================== Tower Buttons ==================== */
+.towerBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 8px;
+  background: #2b3040;
+  border: 2px solid #3a4158;
+  border-radius: 8px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+.towerBtn:hover { border-color: #4ecdc4; }
+.towerBtn.selected { border-color: #ffd166; background: #35304a; }
+.towerBtn.disabled { opacity: 0.4; cursor: not-allowed; }
+.towerBtn .icon { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+.towerBtn .cost { margin-left: auto; color: #ffd166; font-size: 12px; }
+#towerInfo { font-size: 13px; line-height: 1.7; min-height: 90px; }
+
+/* ==================== Action Buttons ==================== */
+.actBtn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+#waveBtn {
+  background: #4ecdc4;
+  color: #10231f;
+  padding: 12px;
+  font-size: 15px;
+  margin-top: 0;
+}
+#waveBtn:hover { filter: brightness(1.1); }
+.upgradeBtn { background: #ffd166; color: #3a2f10; }
+.sellBtn { background: #7a3b45; color: #ffc9c9; }
+.sellBtn:hover { filter: brightness(1.15); }
+.speedBtn { background: #2b3040; color: #e0e0e0; border: 1px solid #3a4158; }
+
+/* ==================== End Message Modal ==================== */
+#msg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(20, 22, 28, 0.95);
+  border: 2px solid #ffd166;
+  border-radius: 16px;
+  padding: 40px 60px;
+  text-align: center;
+  display: none;
+  z-index: 10;
+}
+#msg h2 { font-size: 32px; margin-bottom: 12px; }
+#msg p { color: #8b93a7; margin-bottom: 20px; }
+#msg button {
+  padding: 10px 30px;
+  background: #4ecdc4;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #10231f;
+}
+
+/* ==================== Tips ==================== */
+.tips { font-size: 12px; color: #6b7385; line-height: 1.6; }
+
+/* ==================== Responsive ==================== */
+@media (max-width: 1100px) {
+  .mapGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .mapGrid { grid-template-columns: 1fr; }
+  #main { flex-direction: column; align-items: center; }
+  #side { width: 760px; max-width: 90vw; }
+}
+
+</style>
+</head>
+<body>
+<h1>🏰 塔防 · TOWER DEFENSE</h1>
+
+<!-- 地图选择面板 -->
+<div id="mapSelectPanel">
+  <div class="panel mapSelect">
+    <h3>🗺️ 选择关卡地图</h3>
+    <p class="mapDesc">不同地图的路径布局不同，影响塔位选择和战术布置。选择一个开始吧！</p>
+    <div id="mapGrid" class="mapGrid"></div>
+  </div>
+</div>
+
+<!-- 游戏主界面（初始隐藏） -->
+<div id="gameUI" style="display:none;">
+  <div id="hud">
+    <span>💰 <b class="gold" id="hudGold">0</b></span>
+    <span>❤️ <b class="lives" id="hudLives">0</b></span>
+    <span>🌊 波次 <b class="wave" id="hudWave">0</b>/<span id="hudMaxWave">0</span></span>
+    <span>⭐ 分数 <b id="hudScore">0</b></span>
+    <span>🗺️ <b id="hudMapName">-</b></span>
+  </div>
+  <div id="main">
+    <canvas id="game" width="760" height="600"></canvas>
+    <div id="side">
+      <div class="panel">
+        <button class="actBtn" id="waveBtn">▶ 开始下一波</button>
+        <button class="actBtn speedBtn" id="speedBtn">速度：1x</button>
+        <button class="actBtn sellBtn" id="recycleModeBtn" style="margin-top:4px;background:#5c4a52">♻ 回收模式</button>
+        <button class="actBtn sellBtn" id="recycleAllBtn" style="margin-top:4px;background:#5c4a52;font-size:12px" onclick="recycleAll()">♻ 回收全部</button>
+      </div>
+      <div class="panel">
+        <h3>建造防御塔（点击空地放置）</h3>
+        <div id="towerButtons"></div>
+      </div>
+      <div class="panel">
+        <h3>选中目标</h3>
+        <div id="towerInfo"><span class="tips">点击地图上的塔可升级或回收（返还 70% 金币）；右键直接回收；按 X 快速回收。</span></div>
+      </div>
+      <div class="panel tips">
+        击杀敌人获得金币，敌人冲入基地会扣生命。共 20 波，守住即为胜利！<br>
+        快捷键：<b>1/2/3</b> 选塔 · <b>空格</b> 开始波次 · <b>S</b> 加速 · <b>X</b> 回收 · <b>右键</b> 回收/取消。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="msg">
+  <h2 id="msgTitle"></h2>
+  <p id="msgText"></p>
+  <button onclick="location.reload()">重新开始</button>
+</div>
+
+
+
+
+
+
+
+<script>
+
+// ============================ KARDS 美术资源 ============================
+const KARDS_ASSETS = {
+  "base": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_Battlefield_Fortress_Darwin_square-2048.png",
+  "enemy_grunt": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/avatars/images/Early-War/portrait_rifles.png",
+  "enemy_runner": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/avatars/images/Early-War/portrait_stars.png",
+  "enemy_tank": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_Battlefield_tank_square_US.png",
+  "enemy_boss": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/avatars/images/Homefront/boss_sam.png",
+  "tower_arrow": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/avatars/images/Early-War/grunt_de.png",
+  "tower_cannon": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_Battlefield_tank_square_soviet.png",
+  "tower_frost": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/avatars/images/Homefront/frost_bletchley.png",
+  "bg_snake": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_nui-board-render-london-2048.png",
+  "bg_uShape": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_Battlefield_Iwo_Jima_square-2048.png",
+  "bg_serpent": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_nui-board-render-elalamein-2048.png",
+  "bg_spiral": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_nui-board-render-moscow-2048.png",
+  "bg_twinRiver": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_Battlefield_submarine_square.png",
+  "bg_lightning": "https://raw.githubusercontent.com/Gary-nope/KARDS-Assets/main/kards-profile-cosmetics-zh-Hans/headquarters/images/T_Battlefield_Concrete_bunker_square-2048.png"
+};
+const imgCache = {};
+let allImagesLoaded = false;
+
+function loadImage(key) {
+  return new Promise((resolve) => {
+    if (imgCache[key]) { resolve(imgCache[key]); return; }
+    const url = KARDS_ASSETS[key];
+    if (!url) { resolve(null); return; }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => { imgCache[key] = img; resolve(img); };
+    img.onerror = () => { console.warn("Load fail:", key); imgCache[key] = null; resolve(null); };
+    img.src = url;
+  });
+}
+
+async function preloadAllKARDS() {
+  Object.keys(KARDS_ASSETS).forEach(k => loadImage(k));
+  setTimeout(() => { allImagesLoaded = true; console.log("🎨 KARDS loaded"); }, 500);
+}
+
+
+"use strict";
+// ============================ 常量与地图 ============================
+const CELL = 40, COLS = 19, ROWS = 15;
+const W = COLS * CELL, H = ROWS * CELL;
+const MAX_WAVE = 20;
+const SELL_REFUND_RATE = 0.7; // 回收返还比例
+
+// ============================ 地图定义 ============================
+// 坐标系：19列×15行（每格40px），敌人从左边界进入，到达基地格子即通关
+
+// 默认地图：S型蛇道
+let WAYPOINTS = [
+  [-1, 2], [14, 2], [14, 6], [4, 6], [4, 10], [17, 10], [17, 13], [10, 13],
+];
+
+const MAPS = {
+  snake: {
+    name: "🏔️ S型蛇道",
+    desc: "经典蛇形路线，塔位丰富，适合作战新手入门",
+    waypoints: [[-1,2],[14,2],[14,6],[4,6],[4,10],[17,10],[17,13],[10,13]],
+  },
+  uShape: {
+    name: "🏗️ U型回廊",
+    desc: "U形弯道围绕中心区，适合冰塔封锁走位",
+    waypoints: [[-1,2],[14,2],[14,12],[4,12],[4,8],[17,8],[17,4],[10,4]],
+  },
+  serpent: {
+    name: "🐍 蛇之道",
+    desc: "超长蛇形路线贯穿全图，考验长期资源规划",
+    waypoints: [[-1,3],[17,3],[17,10],[1,10],[1,7],[17,7],[17,13],[5,13]],
+  },
+  spiral: {
+    name: "🌀 螺旋回廊",
+    desc: "绕中心盘旋向内，塔位密集，炮塔发挥巨大威力",
+    waypoints: [[-1,7],[16,7],[16,0],[0,0],[0,14],[17,14],[17,3],[11,3]],
+  },
+  twinRiver: {
+    name: "🌊 双河汇流",
+    desc: "宽阔蛇形路线，上下两层防线布置空间充足",
+    waypoints: [[-1,2],[17,2],[17,5],[1,5],[1,8],[17,8],[17,13],[7,13]],
+  },
+  lightning: {
+    name: "⚡ 闪电突袭",
+    desc: "快速直线+对角线穿插，节奏紧凑，箭塔主場",
+    waypoints: [[-1,0],[17,0],[17,1],[6,12],[6,12],[17,13],[10,13]],
+  },
+};
+
+// 选择地图：切换 WAYPOINTS 并重新计算路径
+window.switchMap = function(key) {
+  const map = MAPS[key];
+  if (!map) return;
+  WAYPOINTS = map.waypoints.map(w => [...w]);
+  pathCells.clear();
+  pathCellsAdd(WAYPOINTS);
+  recomputePathPixels();
+  console.log(`🗺️ 切换到地图: ${map.name}`);
+};
+
+// ============================ 路径计算（由 WAYPOINTS 动态生成）============================
+const pathCells = new Set();
+
+function pathCellsAdd(wps) {
+  let prev = { x: Math.max(0, wps[0][0]), y: wps[0][1] };
+  markCell(prev.x, prev.y);
+  for (const [wx, wy] of wps.slice(1)) {
+    let cx = prev.x, cy = prev.y;
+    while (cx !== wx || cy !== wy) {
+      if (cx < wx) cx++; else if (cx > wx) cx--;
+      else if (cy < wy) cy++; else cy--;
+      markCell(cx, cy);
+    }
+    prev = { x: wx, y: wy };
+  }
+  function markCell(x, y) {
+    if (x >= 0 && x < COLS && y >= 0 && y < ROWS) pathCells.add(y * COLS + x);
+  }
+}
+pathCellsAdd(WAYPOINTS);
+
+let PATH_PTS, BASE;
+
+function recomputePathPixels() {
+  PATH_PTS = WAYPOINTS.map(([x, y]) => ({ x: (x + 0.5) * CELL, y: (y + 0.5) * CELL }));
+  BASE = PATH_PTS[PATH_PTS.length - 1];
+}
+recomputePathPixels();
+
+// ============================ 塔与敌人定义 ============================
+const TOWER_TYPES = {
+  arrow: {
+    name: "箭塔", color: "#4ecdc4", key: "arrow",
+    desc: "高射速单体攻击",
+    levels: [
+      { cost: 50,  range: 130, dmg: 8,  rate: 0.35, },
+      { cost: 60,  range: 150, dmg: 14, rate: 0.30, },
+      { cost: 120, range: 175, dmg: 26, rate: 0.22, },
+    ],
+    projectile: { speed: 480, size: 4, type: "single" },
+  },
+  cannon: {
+    name: "炮塔", color: "#ff8c42", key: "cannon",
+    desc: "低射速范围爆炸",
+    levels: [
+      { cost: 90,  range: 120, dmg: 22, rate: 1.2, splash: 55 },
+      { cost: 100, range: 135, dmg: 38, rate: 1.1, splash: 65 },
+      { cost: 180, range: 155, dmg: 70, rate: 0.95, splash: 80 },
+    ],
+    projectile: { speed: 260, size: 7, type: "splash" },
+  },
+  frost: {
+    name: "冰塔", color: "#a78bfa", key: "frost",
+    desc: "减速并冰冻敌人",
+    levels: [
+      { cost: 70,  range: 110, dmg: 4,  rate: 0.6, slow: 0.5, slowDur: 1.5 },
+      { cost: 80,  range: 125, dmg: 7,  rate: 0.55, slow: 0.4, slowDur: 2.0 },
+      { cost: 150, range: 145, dmg: 12, rate: 0.5, slow: 0.3, slowDur: 2.5 },
+    ],
+    projectile: { speed: 380, size: 5, type: "slow" },
+  },
+};
+
+const ENEMY_TYPES = {
+  grunt: { name: "小兵", hp: 30,  speed: 60,  reward: 6,  color: "#e74c3c", size: 11 },
+  runner:{ name: "疾行者", hp: 22, speed: 110, reward: 8,  color: "#f1c40f", size: 9 },
+  tank:  { name: "坦克", hp: 130, speed: 38,  reward: 16, color: "#7f8c8d", size: 14 },
+  boss:  { name: "首领", hp: 900, speed: 30,  reward: 100, color: "#c0392b", size: 18 },
+};
+
+// 生成第 n 波（1-indexed）敌人列表: [{type, delay, hpMul}]
+function makeWave(n) {
+  const list = [];
+  const hpMul = 1 + (n - 1) * 0.28; // 每波血量成长
+  const gruntCount = 6 + n * 2;
+  for (let i = 0; i < gruntCount; i++) list.push({ type: "grunt", hpMul, delay: 0.65 });
+  if (n >= 3) for (let i = 0; i < Math.floor(n * 1.2); i++) list.push({ type: "runner", hpMul, delay: 0.45 });
+  if (n >= 6) for (let i = 0; i < Math.floor((n - 4) / 2) + 1; i++) list.push({ type: "tank", hpMul, delay: 1.2 });
+  if (n % 5 === 0) list.push({ type: "boss", hpMul: hpMul * (1 + n / 20), delay: 2 });
+  return list;
+}
+
+
+"use strict";
+// ============================ 游戏状态 ============================
+const state = {
+  gold: 200,
+  lives: 20,
+  wave: 0,
+  score: 0,
+  speed: 1,
+  phase: "idle",        // idle | spawning | fighting | over | won
+  enemies: [],
+  towers: [],           // {gx, gy, x, y, type, level, cd, totalSpent}
+  projectiles: [],
+  particles: [],
+  spawnQueue: [],
+  spawnTimer: 0,
+  buildChoice: null,    // tower key
+  selectedTower: null,
+  hover: null,          // {gx, gy, mx, my}
+};
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+
+"use strict";
+// ============================ 逻辑辅助 & 核心玩法 ============================
+function towerAt(gx, gy) { return state.towers.find(t => t.gx === gx && t.gy === gy); }
+function canBuild(gx, gy) {
+  if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return false;
+  if (pathCells.has(gy * COLS + gx)) return false;
+  return !towerAt(gx, gy);
+}
+function towerCost(type, level = 0) { return TOWER_TYPES[type].levels[level].cost; }
+function sellValue(t) { return Math.floor(t.totalSpent * SELL_REFUND_RATE); }
+
+function buildTower(gx, gy, type) {
+  const cost = towerCost(type, 0);
+  if (state.gold < cost) { flashMsg("金币不足！"); return; }
+  state.gold -= cost;
+  state.towers.push({ gx, gy, type, level: 0, cd: 0, totalSpent: cost,
+    x: (gx + 0.5) * CELL, y: (gy + 0.5) * CELL });
+  updateUI();
+}
+
+function selectTower(t) { state.selectedTower = t; state.buildChoice = null; updateUI(); }
+function deselect() { state.selectedTower = null; state.buildChoice = null; updateUI(); }
+
+// 升级
+function upgradeTower(t) {
+  const def = TOWER_TYPES[t.type];
+  if (t.level >= def.levels.length - 1) return;
+  const cost = def.levels[t.level + 1].cost;
+  if (state.gold < cost) { flashMsg("金币不足！"); return; }
+  state.gold -= cost;
+  t.level++; t.totalSpent += cost;
+  spawnParticles(t.x, t.y, "#ffd166", 12);
+  updateUI();
+}
+
+// 回收已放置的塔：返还 70% 累计投入金币
+function sellTower(t) {
+  const refund = sellValue(t);
+  state.gold += refund;
+  state.towers = state.towers.filter(x => x !== t);
+  spawnParticles(t.x, t.y, "#ff6b6b", 10);
+  floatText(t.x, t.y - 10, `回收 +${refund}`, "#ffd166");
+  deselect();
+  flashMsg(`♻️ 已回收 ${TOWER_TYPES[t.type].name}，返还 ${refund} 金币`);
+}
+
+function startWave() {
+  if (state.phase === "over" || state.phase === "won") return;
+  if (state.spawnQueue.length > 0 || state.enemies.length > 0) return;
+  if (state.wave >= MAX_WAVE) return;
+  state.wave++;
+  state.phase = "spawning";
+  state.spawnQueue = makeWave(state.wave).map(e => ({ ...e }));
+  state.spawnTimer = 0.3;
+  updateUI();
+}
+
+function spawnEnemy(spec) {
+  const base = ENEMY_TYPES[spec.type];
+  const hp = Math.round(base.hp * spec.hpMul);
+  state.enemies.push({
+    type: spec.type, ...base,
+    hp, maxHp: hp,
+    x: PATH_PTS[0].x, y: PATH_PTS[0].y,
+    seg: 1,
+    slowMul: 1, slowTimer: 0,
+    dead: false,
+  });
+}
+
+// ============================ 更新循环 ============================
+function update(dt) {
+  if (state.phase === "over" || state.phase === "won") return;
+
+  // 出怪队列处理
+  if (state.spawnQueue.length > 0) {
+    state.spawnTimer -= dt;
+    if (state.spawnTimer <= 0) {
+      const spec = state.spawnQueue.shift();
+      spawnEnemy(spec);
+      state.spawnTimer = spec.delay;
+    }
+  } else if (state.enemies.length === 0 && (state.phase === "spawning" || state.phase === "fighting")) {
+    state.phase = "idle";
+    if (state.wave >= MAX_WAVE) { win(); return; }
+    const bonus = 20 + state.wave * 5;
+    state.gold += bonus;
+    updateUI();
+    flashMsg(`第 ${state.wave} 波清空！奖励 ${bonus} 金币`);
+  } else if (state.spawnQueue.length === 0 && state.enemies.length > 0) {
+    state.phase = "fighting";
+  }
+
+  // 敌人移动
+  for (const e of state.enemies) {
+    if (e.slowTimer > 0) { e.slowTimer -= dt; if (e.slowTimer <= 0) e.slowMul = 1; }
+    let remain = e.speed * e.slowMul * dt;
+    while (remain > 0 && e.seg < PATH_PTS.length) {
+      const tgt = PATH_PTS[e.seg];
+      const dx = tgt.x - e.x, dy = tgt.y - e.y;
+      const d = Math.hypot(dx, dy);
+      if (d <= remain) { e.x = tgt.x; e.y = tgt.y; e.seg++; remain -= d; }
+      else { e.x += dx / d * remain; e.y += dy / d * remain; remain = 0; }
+    }
+    if (e.seg >= PATH_PTS.length) {
+      e.dead = true;
+      state.lives -= (e.type === "boss" ? 5 : 1);
+      spawnParticles(BASE.x, BASE.y, "#ff6b6b", 14);
+      if (state.lives <= 0) { state.lives = 0; gameOver(); }
+      updateUI();
+    }
+  }
+
+  // 塔攻击判定
+  for (const t of state.towers) {
+    t.cd -= dt;
+    if (t.cd > 0) continue;
+    const cfg = TOWER_TYPES[t.type].levels[t.level];
+    let best = null, bestScore = -1;
+    for (const e of state.enemies) {
+      if (e.dead) continue;
+      const d = Math.hypot(e.x - t.x, e.y - t.y);
+      if (d <= cfg.range) {
+        const score = e.seg * 10000 - d;
+        if (score > bestScore) { bestScore = score; best = e; }
+      }
+    }
+    if (best) {
+      t.cd = cfg.rate;
+      t.angle = Math.atan2(best.y - t.y, best.x - t.x);
+      state.projectiles.push({
+        x: t.x, y: t.y, target: best, tower: t.type,
+        speed: TOWER_TYPES[t.type].projectile.speed,
+        size: TOWER_TYPES[t.type].projectile.size,
+        dmg: cfg.dmg, cfg,
+      });
+    }
+  }
+
+  // 弹道追踪
+  for (const p of state.projectiles) {
+    const tgt = p.target;
+    if (tgt.dead) { p.done = true; continue; }
+    const dx = tgt.x - p.x, dy = tgt.y - p.y;
+    const d = Math.hypot(dx, dy);
+    const step = p.speed * dt;
+    if (d <= step + tgt.size) {
+      p.done = true;
+      hitEnemy(tgt, p);
+    } else {
+      p.x += dx / d * step; p.y += dy / d * step;
+    }
+  }
+  state.projectiles = state.projectiles.filter(p => !p.done);
+
+  // 清理死亡单位
+  state.enemies = state.enemies.filter(e => !e.dead);
+
+  // 粒子更新
+  for (const pt of state.particles) {
+    pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+    pt.life -= dt;
+  }
+  state.particles = state.particles.filter(p => p.life > 0);
+}
+
+function hitEnemy(e, p) {
+  const cfg = p.cfg;
+  if (cfg.splash) {
+    spawnParticles(e.x, e.y, "#ff8c42", 10);
+    for (const other of state.enemies) {
+      if (other.dead) continue;
+      const d = Math.hypot(other.x - e.x, other.y - e.y);
+      if (d <= cfg.splash) {
+        const falloff = 1 - (d / cfg.splash) * 0.5;
+        damage(other, Math.round(cfg.dmg * falloff), p);
+      }
+    }
+  } else {
+    if (cfg.slow) {
+      e.slowMul = cfg.slow;
+      e.slowTimer = cfg.slowDur;
+      spawnParticles(e.x, e.y, "#a78bfa", 5);
+    }
+    damage(e, cfg.dmg, p);
+  }
+}
+
+function damage(e, dmg, p) {
+  if (e.dead) return;
+  e.hp -= dmg;
+  if (e.hp <= 0) {
+    e.dead = true;
+    state.gold += e.reward;
+    state.score += e.reward * 10;
+    spawnParticles(e.x, e.y, e.color, 8);
+    floatText(e.x, e.y, `+${e.reward}`, "#ffd166");
+    updateUI();
+  }
+}
+
+function spawnParticles(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 80;
+    state.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      life: 0.4 + Math.random() * 0.3, maxLife: 0.6, color, size: 2 + Math.random() * 2 });
+  }
+}
+function floatText(x, y, text, color) {
+  state.particles.push({ x, y, vx: 0, vy: -40, life: 0.8, maxLife: 0.8, color, text });
+}
+
+function gameOver() {
+  state.phase = "over";
+  showEnd("💀 基地陷落", `坚持到第 ${state.wave} 波 · 得分 ${state.score}`);
+}
+function win() {
+  state.phase = "won";
+  showEnd("🏆 胜利！", `你守住了全部 ${MAX_WAVE} 波进攻！得分 ${state.score}`);
+}
+function showEnd(title, text) {
+  document.getElementById("msgTitle").textContent = title;
+  document.getElementById("msgText").textContent = text;
+  document.getElementById("msg").style.display = "block";
+}
+
+
+"use strict";
+// ============================ 渲染 ============================
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  // KARDS地形底纹
+  const bgKey = "bg_" + currentMapKey;
+  if(allImagesLoaded && imgCache[bgKey]){ctx.globalAlpha=0.15;ctx.drawImage(imgCache[bgKey],0,0,W,H);ctx.globalAlpha=1;}
+
+  // 草地网格
+  for (let gy = 0; gy < ROWS; gy++) {
+    for (let gx = 0; gx < COLS; gx++) {
+      const onPath = pathCells.has(gy * COLS + gx);
+      ctx.fillStyle = onPath ? "#3b3327" : ((gx + gy) % 2 ? "#252a36" : "#232834");
+      ctx.fillRect(gx * CELL, gy * CELL, CELL, CELL);
+      if (onPath) {
+        ctx.fillStyle = "#463c2c";
+        ctx.fillRect(gx * CELL + 2, gy * CELL + 2, CELL - 4, CELL - 4);
+      }
+    }
+  }
+
+  // 出生点与基地
+  ctx.fillStyle = "#2ecc71";
+  const sp = PATH_PTS[0];
+  ctx.fillRect(0, sp.y - 16, 8, 32);
+  ctx.font = "20px serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  // KARDS堡垒图标
+  if(allImagesLoaded && imgCache.base){
+    ctx.save(); ctx.beginPath(); ctx.arc(BASE.x,BASE.y,16,0,Math.PI*2); ctx.clip();
+    ctx.drawImage(imgCache.base,BASE.x-16,BASE.y-16,32,32); ctx.restore();
+  }else{ctx.font="20px serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("🏰",BASE.x,BASE.y);}
+
+  // 悬停格子（建造预览）
+  if (state.hover && state.buildChoice) {
+    const { gx, gy } = state.hover;
+    const ok = canBuild(gx, gy) && state.gold >= towerCost(state.buildChoice);
+    const def = TOWER_TYPES[state.buildChoice];
+    const range = def.levels[0].range;
+    ctx.fillStyle = ok ? "rgba(78,205,196,0.25)" : "rgba(231,76,60,0.25)";
+    ctx.fillRect(gx * CELL, gy * CELL, CELL, CELL);
+    if (ok) {
+      ctx.strokeStyle = "rgba(78,205,196,0.5)";
+      ctx.beginPath();
+      ctx.arc((gx + 0.5) * CELL, (gy + 0.5) * CELL, range, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // 塔
+  for (const t of state.towers) {
+    const def = TOWER_TYPES[t.type];
+    const sel = state.selectedTower === t;
+    if (sel) {
+      const cfg = def.levels[t.level];
+      ctx.strokeStyle = "rgba(255,209,102,0.5)";
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, cfg.range, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // 回收按钮（右上角）
+      const bx = t.gx * CELL + CELL - 14, by = t.gy * CELL + 6;
+      ctx.fillStyle = "rgba(122,59,69,0.95)";
+      ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffc9c9";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("♻", bx, by);
+      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      // 回收价格标签
+      const refund = Math.floor(t.totalSpent * SELL_REFUND_RATE);
+      ctx.fillStyle = "rgba(255,209,102,0.9)";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`+$${refund}`, t.x, t.y - 22);
+      ctx.textAlign = "left";
+    }
+    // 底座
+    ctx.fillStyle = "#2b3040";
+    ctx.fillRect(t.gx * CELL + 4, t.gy * CELL + 4, CELL - 8, CELL - 8);
+    // 炮塔
+    ctx.fillStyle = def.color;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    // KARDS兵种肖像叠加
+    if(allImagesLoaded){const tk="tower_"+t.type;if(imgCache[tk]){ctx.save();ctx.globalAlpha=0.55;ctx.beginPath();ctx.arc(t.x,t.y,14,0,Math.PI*2);ctx.clip();ctx.drawImage(imgCache[tk],t.x-14,t.y-14,28,28);ctx.globalAlpha=1;ctx.restore();}}
+    // 炮管方向
+    if (t.angle !== undefined) {
+      ctx.strokeStyle = def.color;
+      ctx.lineWidth = t.type === "cannon" ? 6 : 3;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.x + Math.cos(t.angle) * 16, t.y + Math.sin(t.angle) * 16);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+    // 等级星
+    ctx.fillStyle = "#ffd166";
+    for (let i = 0; i <= t.level; i++) {
+      ctx.beginPath();
+      ctx.arc(t.gx * CELL + 8 + i * 7, t.gy * CELL + CELL - 7, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 回收价格标签（未选中时也显示）
+    if (!sel) {
+      const refund = Math.floor(t.totalSpent * SELL_REFUND_RATE);
+      ctx.fillStyle = "rgba(255,209,102,0.7)";
+      ctx.font = "bold 9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`♻+$${refund}`, t.x, t.y + 18);
+      ctx.textAlign = "left";
+    }
+  }
+
+  // 敌人
+  for (const e of state.enemies) {
+    if (e.slowTimer > 0) {
+      ctx.fillStyle = "rgba(167,139,250,0.3)";
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.size + 4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.stroke();
+    // KARDS军装肖像叠加
+    if(allImagesLoaded){const ek="enemy_"+e.type;if(imgCache[ek]){ctx.save();ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(e.x,e.y,e.size+3,0,Math.PI*2);ctx.clip();ctx.drawImage(imgCache[ek],e.x-e.size-3,e.y-e.size-3,(e.size+3)*2,(e.size+3)*2);ctx.globalAlpha=1;ctx.restore();}}
+    if (e.type === "boss") {
+      ctx.fillStyle = "#ffd166";
+      ctx.font = "14px serif";
+      ctx.fillText("👑", e.x, e.y - e.size - 6);
+    }
+    // 血条
+    const bw = e.size * 2.2, ratio = e.hp / e.maxHp;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(e.x - bw / 2, e.y - e.size - 9, bw, 4);
+    ctx.fillStyle = ratio > 0.5 ? "#2ecc71" : ratio > 0.25 ? "#f1c40f" : "#e74c3c";
+    ctx.fillRect(e.x - bw / 2, e.y - e.size - 9, bw * ratio, 4);
+  }
+
+  // 弹道
+  for (const p of state.projectiles) {
+    ctx.fillStyle = TOWER_TYPES[p.tower].color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 粒子
+  for (const pt of state.particles) {
+    const alpha = Math.max(pt.life / pt.maxLife, 0);
+    ctx.globalAlpha = alpha;
+    if (pt.text) {
+      ctx.fillStyle = pt.color;
+      ctx.font = "bold 14px sans-serif";
+      ctx.fillText(pt.text, pt.x, pt.y);
+    } else {
+      ctx.fillStyle = pt.color;
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+
+"use strict";
+// ============================ UI 构建与事件 ============================
+// 延迟到 startGame() 时执行，因为在地图选择阶段 #gameUI 被隐藏了。
+
+let recycleMode = false;
+
+// 构建塔选择按钮
+function initTowerButtons() {
+  const towerBtnWrap = document.getElementById("towerButtons");
+  if (!towerBtnWrap) return;
+  Object.entries(TOWER_TYPES).forEach(([key, def], i) => {
+    const btn = document.createElement("button");
+    btn.className = "towerBtn";
+    btn.id = "btn_" + key;
+    btn.innerHTML = `<span class="icon" style="background:${def.color}"></span>
+      <span>${i + 1}. ${def.name}<br><small style="color:#8b93a7">${def.desc}</small></span>
+      <span class="cost">$${def.levels[0].cost}</span>`;
+    btn.onclick = () => chooseBuild(key);
+    towerBtnWrap.appendChild(btn);
+  });
+}
+
+function chooseBuild(key) {
+  if (state.gold < towerCost(key)) { flashMsg(`${TOWER_TYPES[key].name} 需要 ${towerCost(key)} 金币`); return; }
+  state.buildChoice = state.buildChoice === key ? null : key;
+  state.selectedTower = null;
+  updateUI();
+}
+
+// 点击事件
+function initCanvasClick() {
+  canvas.addEventListener("click", e => {
+    if (state.phase === "over" || state.phase === "won") return;
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (canvas.width / r.width);
+    const my = (e.clientY - r.top) * (canvas.height / r.height);
+    const gx = Math.floor(mx / CELL), gy = Math.floor(my / CELL);
+
+    // 回收模式：点击已有塔 → 直接回收
+    if (recycleMode) {
+      const tower = towerAt(gx, gy);
+      if (tower) { sellTower(tower); return; }
+    }
+    // 点击已有塔 → 选中
+    const tower = towerAt(gx, gy);
+    if (tower) { selectTower(tower); return; }
+
+    // 建造模式 → 在空地放置
+    if (state.buildChoice && canBuild(gx, gy)) {
+      buildTower(gx, gy, state.buildChoice);
+      return;
+    }
+
+    // 点击空地 → 取消选择
+    deselect();
+  });
+}
+
+// 右键：回收或取消
+function initContextMenu() {
+  canvas.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (canvas.width / r.width);
+    const my = (e.clientY - r.top) * (canvas.height / r.height);
+    const gx = Math.floor(mx / CELL), gy = Math.floor(my / CELL);
+    const tower = towerAt(gx, gy);
+    if (tower) { sellTower(tower); return; }
+    deselect();
+  });
+}
+
+// 键盘快捷键
+function initKeyHandler() {
+  document.addEventListener("keydown", e => {
+    const keys = { "1": "arrow", "2": "cannon", "3": "frost" };
+    if (keys[e.key]) { chooseBuild(keys[e.key]); return; }
+    if (e.key === "Escape") { deselect(); return; }
+    if (e.key === " ") { e.preventDefault(); startWave(); return; }
+    if (e.key.toLowerCase() === "s") { toggleSpeed(); return; }
+    if (e.key.toLowerCase() === "x" && state.selectedTower) { sellTower(state.selectedTower); return; }
+  });
+}
+
+// 按钮事件
+function initButtons() {
+  const waveBtn = document.getElementById("waveBtn");
+  const speedBtn = document.getElementById("speedBtn");
+  const recycleBtn = document.getElementById("recycleModeBtn");
+  if (waveBtn) waveBtn.onclick = startWave;
+  if (speedBtn) speedBtn.onclick = toggleSpeed;
+  if (recycleBtn) {
+    recycleBtn.onclick = () => {
+      recycleMode = !recycleMode;
+      const btn = document.getElementById("recycleModeBtn");
+      btn.textContent = recycleMode ? "♻ 回收模式 ON" : "♻ 回收模式";
+      btn.style.background = recycleMode ? "#7a3b45" : "#5c4a52";
+      deselect();
+    };
+  }
+}
+
+// 更新 UI 面板
+function updateUI() {
+  const hudGold = document.getElementById("hudGold");
+  if (!hudGold) return; // 地图选择阶段跳过
+  hudGold.textContent = state.gold;
+  document.getElementById("hudLives").textContent = state.lives;
+  document.getElementById("hudWave").textContent = state.wave;
+  document.getElementById("hudMaxWave").textContent = MAX_WAVE;
+  document.getElementById("hudScore").textContent = state.score;
+
+  const waveBtn = document.getElementById("waveBtn");
+  const busy = state.spawnQueue.length > 0 || state.enemies.length > 0;
+  if (state.wave >= MAX_WAVE && !busy) waveBtn.textContent = "🏆 全部完成";
+  else waveBtn.textContent = busy ? `⚔️ 第 ${state.wave} 波进行中…` : `▶ 开始第 ${state.wave + 1} 波`;
+  waveBtn.disabled = busy;
+  waveBtn.style.opacity = busy ? 0.6 : 1;
+
+  for (const key of Object.keys(TOWER_TYPES)) {
+    const btn = document.getElementById("btn_" + key);
+    if (btn) {
+      btn.classList.toggle("selected", state.buildChoice === key);
+      btn.classList.toggle("disabled", state.gold < towerCost(key));
+    }
+  }
+  renderInfo();
+}
+
+// 渲染选中塔信息面板
+function renderInfo() {
+  const el = document.getElementById("towerInfo");
+  if (!el) return;
+  const t = state.selectedTower;
+  if (!t) {
+    el.innerHTML = state.buildChoice
+      ? `<span class="tips">已选择 ${TOWER_TYPES[state.buildChoice].name}，点击地图上绿色可建造格子放置。</span>`
+      : `<span class="tips">点击地图上的塔进行升级/回收（或按 X 快速回收）；右键或 ESC 取消。</span>`;
+    return;
+  }
+  const def = TOWER_TYPES[t.type];
+  const cfg = def.levels[t.level];
+  const next = def.levels[t.level + 1];
+  const refund = sellValue(t);
+  let html = `<b style="color:${def.color}">${def.name} Lv.${t.level + 1}</b><br>`;
+  html += `伤害 ${cfg.dmg} · 射程 ${cfg.range} · 射速 ${(1 / cfg.rate).toFixed(1)}/秒<br>`;
+  if (cfg.splash) html += `溅射半径 ${cfg.splash}px<br>`;
+  if (cfg.slow) html += `减速至 ${(cfg.slow * 100)}% 持续 ${cfg.slowDur}s<br>`;
+  html += `<button class="actBtn upgradeBtn" onclick="upgradeSel()">${
+    next ? `⬆ 升级 (${next.cost}金)` : "★ 已满级"}</button>`;
+  html += `<button class="actBtn sellBtn" onclick="sellSel()">♻ 回收 (返还 ${refund}金)</button>`;
+  html += `<button class="actBtn sellBtn" onclick="quickSell()" style="background:#5c4a52;margin-top:4px">⚡ 快速回收 (X)</button>`;
+  el.innerHTML = html;
+}
+window.upgradeSel = () => state.selectedTower && upgradeTower(state.selectedTower);
+window.sellSel = () => state.selectedTower && sellTower(state.selectedTower);
+window.quickSell = () => state.selectedTower && sellTower(state.selectedTower);
+
+// 一键回收全部
+function recycleAll() {
+  if (state.towers.length === 0) { flashMsg("没有可回收的塔"); return; }
+  const totalRefund = state.towers.reduce((sum, t) => sum + sellValue(t), 0);
+  if (!confirm(`确定要回收全部 ${state.towers.length} 座塔吗？\n将返还 ${totalRefund} 金币`)) return;
+  state.towers.forEach(t => {
+    const refund = sellValue(t);
+    state.gold += refund;
+    spawnParticles(t.x, t.y, "#ff6b6b", 10);
+    spawnParticles(t.x, t.y, "#ffd166", 5);
+  });
+  state.towers = [];
+  deselect();
+  flashMsg(`♻️ 已回收全部 ${state.towers.length} 座塔，返还 ${totalRefund} 金币`);
+  updateUI();
+}
+window.recycleAll = recycleAll;
+
+// 浮动消息提示
+let msgTimer = null;
+function flashMsg(text) {
+  const el = document.getElementById("towerInfo");
+  if (!el) return;
+  el.innerHTML = `<span style="color:#4ecdc4">${text}</span>`;
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(renderInfo, 1500);
+}
+
+
+"use strict";
+// ============================ 地图选择 & 主循环 ============================
+
+// 绘制迷你地图预览缩略图（160x130）
+function drawMiniMap(canvas, waypoints) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = "#20242e";
+  ctx.fillRect(0, 0, w, h);
+
+  // 计算边界缩放
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [x, y] of waypoints) {
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  const pad = 1;
+  const cellW = (maxX - minX + 1 + pad * 2) / w;
+  const cellH = (maxY - minY + 1 + pad * 2) / h;
+  const scale = Math.min(cellW, cellH);
+  const offsetX = (w - (maxX - minX + 1 + pad * 2) * scale) / 2;
+  const offsetY = (h - (maxY - minY + 1 + pad * 2) * scale) / 2;
+  function toPx(gx, gy) {
+    return [
+      (gx - minX + pad) * scale + offsetX,
+      (gy - minY + pad) * scale + offsetY
+    ];
+  }
+
+  // 画路径线
+  ctx.strokeStyle = "rgba(59,51,39,0.8)";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (let i = 0; i < waypoints.length; i++) {
+    const [px, py] = toPx(waypoints[i][0], waypoints[i][1]);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // 起点标记（绿色圆点）
+  const [sx, sy] = toPx(waypoints[0][0], waypoints[0][1]);
+  ctx.fillStyle = "#2ecc71";
+  ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2); ctx.fill();
+
+  // 终点标记（红色城堡位置）
+  const [ex, ey] = toPx(waypoints[waypoints.length-1][0], waypoints[waypoints.length-1][1]);
+  ctx.fillStyle = "#ff6b6b";
+  ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+// ============================ 地图选择器 ============================
+function buildMapSelector() {
+  const grid = document.getElementById("mapGrid");
+  if (!grid) return;
+
+  for (const [key, map] of Object.entries(MAPS)) {
+    const card = document.createElement("div");
+    card.className = "mapCard";
+    card.id = `mapCard_${key}`;
+
+    // 迷你预览 Canvas
+    const miniCanvas = document.createElement("canvas");
+    miniCanvas.width = 160; miniCanvas.height = 130;
+    miniCanvas.style.width = "100%";
+    drawMiniMap(miniCanvas, map.waypoints);
+
+    card.innerHTML = `
+      <div class="mapName">${map.name}</div>
+      <div class="mapDesc">${map.desc}</div>
+      <div class="mapHint">点击开始 · 点击切换</div>
+    `;
+
+    card.onclick = () => selectMap(key);
+    card.appendChild(miniCanvas);
+    grid.appendChild(card);
+  }
+
+  // 默认高亮蛇形地图卡片
+  const defaultCard = document.getElementById("mapCard_snake");
+  if (defaultCard) defaultCard.classList.add("selected");
+}
+
+// 选择地图并启动游戏
+function selectMap(key, silent) {
+  switchMap(key);
+  currentMapKey = key;
+
+  // 更新卡片选中状态
+  for (const k of Object.keys(MAPS)) {
+    const card = document.getElementById(`mapCard_${k}`);
+    if (card) card.classList.toggle("selected", k === key);
+  }
+
+  // 如果不是静默模式，启动游戏
+  if (!silent && !gameStarted) {
+    startGame();
+  }
+}
+
+let currentMapKey = "snake";
+let gameStarted = false;
+
+// 启动游戏：隐藏选择面板，显示游戏界面
+function startGame() {
+  if (gameStarted) return;
+  gameStarted = true;
+
+  const mapSelectPanel = document.getElementById("mapSelectPanel");
+  const gameUI = document.getElementById("gameUI");
+  const hudMapName = document.getElementById("hudMapName");
+
+  if (mapSelectPanel) mapSelectPanel.style.display = "none";
+  if (gameUI) gameUI.style.display = "";
+  if (hudMapName) hudMapName.textContent = MAPS[currentMapKey].name;
+
+  // 初始化游戏 UI 元素（按钮、事件监听等）
+  initTowerButtons();
+  initCanvasClick();
+  initContextMenu();
+  initKeyHandler();
+  initButtons();
+
+  // 启动游戏主循环
+  updateUI();
+  requestAnimationFrame(loop);
+  console.log("🎮 游戏已启动 - 地图:", MAPS[currentMapKey].name);
+}
+
+// ============================ 速度控制 ============================
+function toggleSpeed() {
+  state.speed = state.speed === 1 ? 2 : state.speed === 2 ? 3 : 1;
+  const btn = document.getElementById("speedBtn");
+  if (btn) btn.textContent = `⏩ 速度: ${state.speed}x`;
+}
+
+// ============================ 主循环 ============================
+let last = performance.now();
+function loop(now) {
+  let dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  for (let i = 0; i < state.speed; i++) update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+// ============================ 鼠标悬停 ============================
+canvas.addEventListener("mousemove", e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (canvas.width / r.width);
+  const my = (e.clientY - r.top) * (canvas.height / r.height);
+  const gx = Math.floor(mx / CELL), gy = Math.floor(my / CELL);
+  state.hover = (gx >= 0 && gx < COLS && gy >= 0 && gy < ROWS) ? { gx, gy, mx, my } : null;
+});
+canvas.addEventListener("mouseleave", () => state.hover = null);
+
+// ============================ 初始化 ============================
+buildMapSelector();
+// 等待用户点击地图卡片后通过 startGame() 启动游戏
+</script>
+</body>
+</html>
